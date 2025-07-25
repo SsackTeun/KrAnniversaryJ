@@ -1,4 +1,4 @@
-package org.example.holidaylib.config;
+package org.example.holidaylib.internal;
 
 import lombok.Getter;
 

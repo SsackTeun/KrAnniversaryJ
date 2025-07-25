@@ -1,6 +1,5 @@
-package org.example.holidaylib;
+package org.example.holidaylib.internal;
 
-import org.example.holidaylib.config.HolidayConfig;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -18,7 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-class HolidayFetcher {
+public class HolidayFetcher {
 
     private final String apiKey;
 
@@ -29,19 +28,23 @@ class HolidayFetcher {
         this.apiKey = config.getApiKey();
     }
 
-    public Set<String> getHolidays(String year) throws UnsupportedEncodingException, JsonProcessingException {
-        Set<String> holidays = new HashSet<>();
+    public Set<LocalDate> getHolidays(String year) throws JsonProcessingException, UnsupportedEncodingException {
+        Set<LocalDate> holidayDates = new HashSet<>();
         for (int month = 1; month <= 12; month++) {
-            holidays.addAll(fetchHolidays(year, String.format("%02d", month)));
+            holidayDates.addAll(fetchHolidays(year, String.format("%02d", month)));
         }
-        return holidays;
+        return holidayDates;
     }
 
-    public Set<String> getHolidays(String year, String month) throws UnsupportedEncodingException, JsonProcessingException {
+    /**
+     * 해당 연도, 월 공휴일 조회
+     */
+    public Set<LocalDate> getHolidays(String year, String month) throws JsonProcessingException, UnsupportedEncodingException {
         return fetchHolidays(year, month);
     }
 
-    public Set<String> fetchHolidays(String year, String month) throws UnsupportedEncodingException {
+
+    public Set<LocalDate> fetchHolidays(String year, String month) throws UnsupportedEncodingException {
         String encodedApiKey = URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
         URI uri = UriComponentsBuilder.fromUriString("http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo")
                 .queryParam("serviceKey", encodedApiKey)
@@ -61,7 +64,9 @@ class HolidayFetcher {
                 .block();
 
         Object items = response.getResponse().getBody().getItems();
-        Set<String> holidaySet = new HashSet<>();
+
+        Set<LocalDate> holidaySet = new TreeSet<>();
+
         ObjectMapper objectMapper = new ObjectMapper();
 
         if (items instanceof LinkedHashMap) {
@@ -70,13 +75,13 @@ class HolidayFetcher {
                 ((ArrayList<?>) itemData).forEach(x -> {
                     RestDeInfoDTO.Item i = objectMapper.convertValue(x, RestDeInfoDTO.Item.class);
                     LocalDate date = LocalDate.parse(i.getLocdate(), API_DATE_FORMATTER);
-                    holidaySet.add(date.format(OUTPUT_DATE_FORMATTER));
+                    holidaySet.add(date);
                 });
             } else if (itemData instanceof LinkedHashMap) {
                 ((LinkedHashMap<?, ?>) itemData).forEach((x, y) -> {
                     if (x.equals("locdate")) {
                         LocalDate date = LocalDate.parse(y.toString(), API_DATE_FORMATTER);
-                        holidaySet.add(date.format(OUTPUT_DATE_FORMATTER));
+                        holidaySet.add(date);
                     }
                 });
             }

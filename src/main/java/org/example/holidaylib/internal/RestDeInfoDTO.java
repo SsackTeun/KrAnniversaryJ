@@ -1,4 +1,4 @@
-package org.example.holidaylib;
+package org.example.holidaylib.internal;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
